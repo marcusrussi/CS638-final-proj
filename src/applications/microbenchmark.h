@@ -55,7 +55,7 @@ class Microbenchmark : public Application {
   Storage* storage_;
 
   static const int kRWSetSize = 10;  // MUST BE EVEN
-  static const uint64_t kDBSize = 10000000;  // Database size
+  static const uint64_t kDBSize = 1000;  // Database size
   static const int kValueSize = 1000;   // Value size
 
 
