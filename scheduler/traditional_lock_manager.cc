@@ -1,10 +1,10 @@
 
-#include "scheduler/traditional_lock_manager.h"
+#include "traditional_lock_manager.h"
 
 
 Traditional_LockManager::Traditional_LockManager(uint32_t table_num) {
   table_num_ = table_num;
-  
+
   if (table_num_ == 1) {
     // For microbenchmark
     table_buckets[0] = BUCKET_SIZE;
@@ -77,7 +77,7 @@ bool Traditional_LockManager::Lock(LockUnit* lock_unit) {
   uint64_t key = lock_unit->key;
   LockMode mode = lock_unit->mode;
   bool acquired;
-  
+
   Traditional_Bucket* bucket = lock_table_ + Hash(key) % table_buckets[table_id] + table_sum_buckets[table_id];
   pthread_mutex_lock(&(bucket->latch));
 
@@ -98,7 +98,7 @@ bool Traditional_LockManager::Lock(LockUnit* lock_unit) {
       previous = key_list;
       key_list = key_list->next;
     }while (key_list != NULL);
-   
+
     if (found == false) {
       key_list = keys_freelist[txn->GetWorkerId()]->Get();
       key_list->key = key;
@@ -117,7 +117,7 @@ bool Traditional_LockManager::Lock(LockUnit* lock_unit) {
       key_list->tail = lock_request;
       acquired = true;
     } else {
-      key_list->tail->next = lock_request; 
+      key_list->tail->next = lock_request;
       lock_request->prev = key_list->tail;
       key_list->tail = lock_request;
       lock_request->txn = txn;
@@ -132,7 +132,7 @@ bool Traditional_LockManager::Lock(LockUnit* lock_unit) {
       key_list->tail = lock_request;
       acquired = true;
     } else {
-      key_list->tail->next = lock_request; 
+      key_list->tail->next = lock_request;
       lock_request->prev = key_list->tail;
       key_list->tail = lock_request;
       lock_request->txn = txn;
@@ -182,7 +182,7 @@ void Traditional_LockManager::Release(const TableKey table_key, Txn* txn) {
     }
     key_list = key_list->next;
   }while (key_list != NULL);
-  
+
   assert(key_list != NULL);
 
   LockRequest* target = key_list->head;
@@ -194,11 +194,11 @@ void Traditional_LockManager::Release(const TableKey table_key, Txn* txn) {
       break;
     }
     if (target->mode == WRITE) {
-      write_requests_precede_target = true; 
+      write_requests_precede_target = true;
     }
     target = target->next;
   } while(target != NULL);
-assert(target != NULL);  
+assert(target != NULL);
   LockRequest* following_locks = target->next;
 
   if (following_locks != NULL) {
