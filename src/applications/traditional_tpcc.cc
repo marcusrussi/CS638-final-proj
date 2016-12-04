@@ -23,13 +23,13 @@ void Traditional_TPCC::NewOrderTxn(Txn* txn, uint64_t txn_id) const {
   txn->SetTxnId(txn_id);
   txn->SetTxnType(NEW_ORDER);
   txn->SetTxnStatus(ACTIVE);
-  
+
   uint64_t w_id;
 
   w_id = (uint64_t)random.gen_rand_range(0, s_num_warehouses-1);
 
 
-  uint64_t d_id = (uint64_t)random.gen_rand_range(0, s_districts_per_wh-1);        
+  uint64_t d_id = (uint64_t)random.gen_rand_range(0, s_districts_per_wh-1);
   uint64_t c_id = (uint64_t)random.gen_rand_range(0, s_customers_per_dist-1);
 
   txn->AddReadSet(0, w_id);
@@ -45,9 +45,9 @@ void Traditional_TPCC::NewOrderTxn(Txn* txn, uint64_t txn_id) const {
   c_keys[2] = c_id;
   txn->AddReadSet(2, TPCCKeyGen::create_customer_key(c_keys));
 
-  //uint32_t num_items = random.gen_rand_range(5, 15); 
+  //uint32_t num_items = random.gen_rand_range(5, 15);
   //txn->tpcc_args.num_items = num_items;
-  uint32_t num_items = 10; 
+  uint32_t num_items = 10;
 
   /**for (uint32_t i = 0; i < num_items; ++i) {
     //quantities[i] = random.gen_rand_range(1, 10);
@@ -61,9 +61,9 @@ void Traditional_TPCC::NewOrderTxn(Txn* txn, uint64_t txn_id) const {
     uint64_t cur_item;
     do {
       cur_item = (uint64_t)random.gen_rand_range(0, s_num_items-1);
-    } while (seen_items.find(cur_item) != seen_items.end());            
+    } while (seen_items.find(cur_item) != seen_items.end());
     seen_items.insert(cur_item);
- 
+
     int pct = random.gen_rand_range(1, 100);
     //if (pct > 101) {
     if (pct > 1) {
@@ -92,7 +92,7 @@ void Traditional_TPCC::PaymentTxn(Txn* txn, uint64_t txn_id) const {
   txn->SetTxnId(txn_id);
   txn->SetTxnType(PAYMENT);
   txn->SetTxnStatus(ACTIVE);
-  
+
   uint64_t w_id;
 
   w_id = (uint64_t)random.gen_rand_range(0, s_num_warehouses-1);
@@ -159,14 +159,14 @@ int Traditional_TPCC::ExecuteNewOrderTxn(Txn* txn) const {
 
   table_key = txn->GetReadWriteSet(0);
 
- 
+
   assert(table_key.table_id == 1);
   District* district = (District*)storage_->ReadRecord(table_key.table_id, table_key.key);
   float d_tax = district->d_tax;
   uint32_t order_id = district->d_next_o_id;
   district->d_next_o_id += 1;
   uint32_t d_id = TPCCKeyGen::get_district_key(table_key.key);
-   
+
   table_key = txn->GetReadSet(1);
   assert(table_key.table_id == 2);
 //int x_w = TPCCKeyGen::get_warehouse_key(table_key.key);
@@ -191,7 +191,7 @@ int Traditional_TPCC::ExecuteNewOrderTxn(Txn* txn) const {
   uint64_t new_order_key = TPCCKeyGen::create_new_order_key(keys);
   storage_->InsertRecord(txn->GetWorkerId(), 4, new_order_key, (void*)&new_order);
 
-  //uint32_t num_items = txn->tpcc_args.num_items; 
+  //uint32_t num_items = txn->tpcc_args.num_items;
   uint32_t num_items = 10;
   float total_amount = 0;
   bool is_local = true;
@@ -203,7 +203,7 @@ int Traditional_TPCC::ExecuteNewOrderTxn(Txn* txn) const {
     uint32_t item_id = TPCCKeyGen::get_stock_key(table_key.key);
     Item* item = (Item*)storage_->ReadRecord(7, item_id);
     Stock* stock = (Stock*)storage_->ReadRecord(table_key.table_id, table_key.key);
-    
+
     float i_price = item->i_price;
     //char* i_name = item->i_name;
     //char* i_data = item->i_data;
@@ -287,8 +287,8 @@ int Traditional_TPCC::ExecuteNewOrderTxn(Txn* txn) const {
 
       new_order_line.ol_delivery_d = 0;
       strcpy(new_order_line.ol_dist_info, ol_dist_info);
-      
-      keys[3] = i;        
+
+      keys[3] = i;
       uint64_t order_line_key = TPCCKeyGen::create_order_line_key(keys);
       storage_->InsertRecord(txn->GetWorkerId(), 6, order_line_key, (void*)&new_order_line);
   }
@@ -306,7 +306,7 @@ int Traditional_TPCC::ExecuteNewOrderTxn(Txn* txn) const {
   if (is_local == true) {
     order.o_all_local = 1;
   } else {
-    order.o_all_local = 0;   
+    order.o_all_local = 0;
   }
   order.o_entry_d = 0;
   storage_->InsertRecord(txn->GetWorkerId(), 5, new_order_key, (void*)&order);
@@ -333,21 +333,21 @@ int Traditional_TPCC::ExecutePaymentTxn(Txn* txn) const {
   //char* w_city = warehouse->w_city;
   //char* w_state = warehouse->w_state;
   //char* w_zip = warehouse->w_zip;
-  
+
   table_key = txn->GetReadWriteSet(1);
 //table_key = txn->GetReadWriteSet(0);
   assert(table_key.table_id == 1);
   District* district = (District*)storage_->ReadRecord(table_key.table_id, table_key.key);
   uint32_t d_id = TPCCKeyGen::get_district_key(table_key.key);
   district->d_ytd += h_amount;
-  
+
   char* d_name = district->d_name;
   //char* d_street_1 = district->d_street_1;
   //char* d_street_2 = district->d_street_2;
   //char* d_city = district->d_city;
   //char* d_state = district->d_state;
   //char* d_zip = district->d_zip;
-   
+
   table_key = txn->GetReadWriteSet(2);
 //table_key = txn->GetReadWriteSet(1);
   assert(table_key.table_id == 2);
@@ -375,23 +375,23 @@ int Traditional_TPCC::ExecutePaymentTxn(Txn* txn) const {
 
 
   static const char *credit = "BC";
-  if (strcmp(credit, customer->c_credit) == 0) {	// Bad credit       
+  if (strcmp(credit, customer->c_credit) == 0) {	// Bad credit
     static const char *space = " ";
     char c_id_str[17];
     sprintf(c_id_str, "%x", c_id);
-    char c_d_id_str[17]; 
+    char c_d_id_str[17];
     sprintf(c_d_id_str, "%x", c_d_id);
     char c_w_id_str[17];
     sprintf(c_w_id_str, "%x", c_w_id);
-    char d_id_str[17]; 
+    char d_id_str[17];
     sprintf(d_id_str, "%x", w_id);
     char w_id_str[17];
     sprintf(w_id_str, "%x", d_id);
     char h_amount_str[17];
     sprintf(h_amount_str, "%lx", (uint64_t)h_amount);
-        
-    static const char *holder[11] = {c_id_str, space, c_d_id_str, space, 
-                                         c_w_id_str, space, d_id_str, space, 
+
+    static const char *holder[11] = {c_id_str, space, c_d_id_str, space,
+                                         c_w_id_str, space, d_id_str, space,
                                          w_id_str, space, h_amount_str};
     random.append_strings(customer->c_data, holder, 501, 11);
   }
@@ -405,7 +405,7 @@ int Traditional_TPCC::ExecutePaymentTxn(Txn* txn) const {
   hist.h_w_id = w_id;
   hist.h_date = 0;
   hist.h_amount = h_amount;
-    
+
   static const char *empty = "    ";
   const char *holder[3] = {w_name, empty, d_name};
   random.append_strings(hist.h_data, holder, 26, 3);
@@ -433,10 +433,10 @@ void Traditional_TPCC::InitializeStorage() const {
   storage_->NewTable(0, s_num_warehouses, s_num_warehouses + 1, sizeof(Warehouse));
   storage_->NewTable(1, s_num_warehouses*s_districts_per_wh, s_num_warehouses*s_districts_per_wh + 1, sizeof(District));
   storage_->NewTable(2, s_num_warehouses*s_districts_per_wh*s_customers_per_dist/1, s_num_warehouses*s_districts_per_wh*s_customers_per_dist + 1, sizeof(Customer));
-  storage_->NewTable(3, 1000, 2*TRANSACTIONS_GENERATED*1000000/WORKER_THREADS + 1, sizeof(History));
-  storage_->NewTable(4, 1000, 2*TRANSACTIONS_GENERATED*1000000/WORKER_THREADS + 1, sizeof(NewOrder));
-  storage_->NewTable(5, 1000, 2*TRANSACTIONS_GENERATED*1000000/WORKER_THREADS + 1, sizeof(Order));
-  storage_->NewTable(6, 1000, 2*TRANSACTIONS_GENERATED*1000000*10/WORKER_THREADS + 1, sizeof(OrderLine));
+  storage_->NewTable(3, 1000, 2*TRANSACTIONS_GENERATED/WORKER_THREADS + 1, sizeof(History));
+  storage_->NewTable(4, 1000, 2*TRANSACTIONS_GENERATED/WORKER_THREADS + 1, sizeof(NewOrder));
+  storage_->NewTable(5, 1000, 2*TRANSACTIONS_GENERATED/WORKER_THREADS + 1, sizeof(Order));
+  storage_->NewTable(6, 1000, 2*TRANSACTIONS_GENERATED/1000000*10/WORKER_THREADS + 1, sizeof(OrderLine));
   storage_->NewTable(7, s_num_items, s_num_items + 1, sizeof(Item));
   storage_->NewTable(8, s_num_warehouses*s_districts_per_wh*s_num_items/1, s_num_warehouses*s_districts_per_wh*s_num_items + 1, sizeof(Stock));
 
@@ -450,7 +450,7 @@ void Traditional_TPCC::InitializeStorage() const {
   random.gen_rand_string(10, 20, warehouse.w_street_1);
   random.gen_rand_string(10, 20, warehouse.w_street_2);
   random.gen_rand_string(10, 20, warehouse.w_city);
-  random.gen_rand_string(2, 2, warehouse.w_state);        
+  random.gen_rand_string(2, 2, warehouse.w_state);
   char stupid_zip[] = "123456789";
   strcpy(warehouse.w_zip, stupid_zip);
 
@@ -488,23 +488,23 @@ void Traditional_TPCC::InitializeStorage() const {
     }
   }
 
-  
+
   // 3. Generate records for customer table
   uint32_t customer_keys[3];
   Customer customer;
-                  
+
   customer.c_id = -1;
   customer.c_d_id = -1;
   customer.c_w_id = -1;
 
-  customer.c_discount = (rand() % 5001) / 10000.0;        
+  customer.c_discount = (rand() % 5001) / 10000.0;
   random.gen_rand_string(8, 16, customer.c_first);
   random.gen_last_name_load(customer.c_last);
   customer.c_credit_lim = 50000;
   customer.c_balance = -10;
   customer.c_ytd_payment = 10;
   customer.c_payment_cnt = 1;
-  customer.c_delivery_cnt = 0;        
+  customer.c_delivery_cnt = 0;
 
   random.gen_rand_string(10, 20, customer.c_street_1);
   random.gen_rand_string(10, 20, customer.c_street_2);
@@ -513,7 +513,7 @@ void Traditional_TPCC::InitializeStorage() const {
   random.gen_rand_string(4, 4, customer.c_zip);
 
   for (int j = 4; j < 9; ++j) {
-    customer.c_zip[j] = '1';            
+    customer.c_zip[j] = '1';
   }
   random.gen_rand_string(16, 16, customer.c_phone);
   customer.c_middle[0] = 'O';
@@ -540,7 +540,7 @@ void Traditional_TPCC::InitializeStorage() const {
           customer.c_credit[1] = 'C';
           customer.c_credit[2] = '\0';
         }
-    
+
         customer_keys[2] = i;
         uint64_t customer_key = TPCCKeyGen::create_customer_key(customer_keys);
         storage_->PutRecord(2, customer_key, (void*)&customer);
@@ -575,7 +575,7 @@ void Traditional_TPCC::InitializeStorage() const {
     uint64_t item_key = (uint64_t)i;
     storage_->PutRecord(7, item_key, (void*)&item);
   }
-  
+
 
   // 5. Generate records for stock table
   Stock stock;
@@ -587,7 +587,7 @@ void Traditional_TPCC::InitializeStorage() const {
   stock.s_order_cnt = 0;
   stock.s_remote_cnt = 0;
   random.gen_rand_string(len, len, stock.s_data);
-        
+
   random.gen_rand_string(24, 24, stock.s_dist_01);
   random.gen_rand_string(24, 24, stock.s_dist_02);
   random.gen_rand_string(24, 24, stock.s_dist_03);
@@ -615,9 +615,9 @@ void Traditional_TPCC::InitializeStorage() const {
         stock.s_data[start_original+4] = 'I';
         stock.s_data[start_original+5] = 'N';
         stock.s_data[start_original+6] = 'A';
-        stock.s_data[start_original+7] = 'L';            
+        stock.s_data[start_original+7] = 'L';
       }
-      
+
       stock_keys[1] = i;
       uint64_t stock_key = TPCCKeyGen::create_stock_key(stock_keys);
       storage_->PutRecord(8, stock_key, (void*)&stock);
@@ -641,5 +641,5 @@ int Traditional_TPCC::Rollback(LockUnit* lock_unit) const {
   return 0;
 }
 
-void Traditional_TPCC::InitializeTable(uint32_t table_id) const {  
+void Traditional_TPCC::InitializeTable(uint32_t table_id) const {
 }

@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
   // Catch ^C and kill signals and exit gracefully (for profiling).
   signal(SIGINT, &stop);
   signal(SIGTERM, &stop);
-  
+
 
   cpu_set_t cs;
   CPU_ZERO(&cs);
@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
     assert(false);
   }
 
-  uint64_t txns_per_thread = TRANSACTIONS_GENERATED*1000000/WORKER_THREADS + 1;
+  uint64_t txns_per_thread = TRANSACTIONS_GENERATED/WORKER_THREADS + 1;
   // Create txns and txn manager in advance
   for (int i = 0; i < WORKER_THREADS; i++) {
     transactions_input_queues[i] = (Txn*)malloc(sizeof(Txn) * txns_per_thread);
@@ -85,7 +85,7 @@ int main(int argc, char** argv) {
       physical_partitioned_transactions_managers[i] = (PhysicalPartitioned_TransactionManager*)malloc(sizeof(PhysicalPartitioned_TransactionManager) * txns_per_thread);
     }
   }
- 
+
   // This is only for partitioned LM(Orthrus), number of lock managers that each txn needs to access
   int lm_cnt_per_txn = StringToInt(argv[3]);
 
@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
       // For TPCC
       application = new TPCC(LOCK_MANAGER_THREADS, storage);
     } else {
-      fprintf(stderr, "Usage: %s <|1|2|3|4|5|7|8> <m[icro]|t[pcc]> <percent_mp>\n", argv[0]);   
+      fprintf(stderr, "Usage: %s <|1|2|3|4|5|7|8> <m[icro]|t[pcc]> <percent_mp>\n", argv[0]);
       exit(1);
     }
   } else if (StringToInt(argv[1]) == 1 || StringToInt(argv[1]) == 2 || StringToInt(argv[1]) == 3 || StringToInt(argv[1]) == 4 || StringToInt(argv[1]) == 5){
@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
       // For TPCC
      application = new Traditional_TPCC(storage);
     } else {
-      fprintf(stderr, "Usage: %s <|1|2|3|7|8> <m[icro]|t[pcc]> <percent_mp>\n", argv[0]);   
+      fprintf(stderr, "Usage: %s <|1|2|3|7|8> <m[icro]|t[pcc]> <percent_mp>\n", argv[0]);
       exit(1);
     }
   } else if (StringToInt(argv[1]) == 6) {
@@ -128,10 +128,10 @@ int main(int argc, char** argv) {
   } else if (StringToInt(argv[1]) == 10) {
     application = new PhysicalTraditional_Microbenchmark(lm_cnt_per_txn, HOT, storage);
   } else {
-      fprintf(stderr, "Usage: %s <|1|2|3|4|5|7|8> <m[icro]|t[pcc]> <percent_mp>\n", argv[0]);   
+      fprintf(stderr, "Usage: %s <|1|2|3|4|5|7|8> <m[icro]|t[pcc]> <percent_mp>\n", argv[0]);
       exit(1);
   }
- 
+
   std::cout<<"-----------Begin generating transactions.-----------\n"<<std::flush;
 
   for (uint64_t i = 0; i < txns_per_thread * WORKER_THREADS; i++) {
@@ -160,7 +160,7 @@ int main(int argc, char** argv) {
       manager->Setup(txn, application);
 
     } else {
-      fprintf(stderr, "Usage: %s <|1|2|3|4|5|7|8> <m[icro]|t[pcc]> <percent_mp>\n", argv[0]);   
+      fprintf(stderr, "Usage: %s <|1|2|3|4|5|7|8> <m[icro]|t[pcc]> <percent_mp>\n", argv[0]);
       exit(1);
     }
 
@@ -184,7 +184,7 @@ int main(int argc, char** argv) {
   std::cout<<"-----------Finish initializing storage.-----------\n"<<std::flush;
 
 
-//  barrier();  
+//  barrier();
 
   Spin(2);
 

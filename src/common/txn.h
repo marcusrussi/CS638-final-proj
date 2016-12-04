@@ -2,7 +2,7 @@
 // Txn class, and most parameters defined here
 #include <algorithm>
 #include <stdint.h>
-#include <stdlib.h> 
+#include <stdlib.h>
 
 //#define PROFILER
 
@@ -28,12 +28,12 @@
 #define LM_QUEUE_SIZE  512
 #define MAX_ACTIVE_TRANSACTIONS 1  // Number of max active transactions per worker thread (Should set it bigger, say 5 for low conention&random setting, should set smaller for high contention, say 1.)
 
-#define TRANSACTIONS_GENERATED  2  // million transactions created(will repeatly use the same transactions)
+#define TRANSACTIONS_GENERATED  2000000  // million transactions created(will repeatly use the same transactions)
 #define BUCKET_SIZE 1000     // Bucket size for each lock manager
 #define LOCKREQUEST_FREELIST_CNT  2000
 #define KEYS_FREELIST_CNT    2000
 #define HASH_MAP_SIZE  200
-#define HASH_MAP_LM_SIZE 200 
+#define HASH_MAP_LM_SIZE 200
 #define HASH_MAP_WAITFORGRAPH 10000
 #define MAX_UINT64 0xFFFFFFFFFFFFFFFF
 #define CACHE_LINE 64
@@ -45,7 +45,7 @@
 
 #define TXN_MALLOC_START      50  // Allocate txn/txn manager memory in the fifth NUMA node
 #define STORAGE_MALLOC_START  60  // Allocate storage memory in the sixth NUMA node
-#define EXECUTION_MALLOC_START 70  
+#define EXECUTION_MALLOC_START 70
 
 
 // For tpcc
@@ -78,14 +78,14 @@ struct TableKey {
   TableKey (uint64_t id, uint64_t k) {
     table_id = id;
     key = k;
-  } 
+  }
   uint64_t table_id;
   uint64_t key;
 };
 
 
 class Txn {
-public: 
+public:
   Txn();
 
   void SetupTxn();
@@ -121,7 +121,7 @@ public:
 
   uint32_t read_cnt;
   uint32_t read_write_cnt;
-  
+
   uint32_t txn_id;
   uint32_t txn_type;
   uint32_t txn_worker_id;
@@ -129,11 +129,11 @@ public:
 
   uint64_t timestamp;
   //Tpcc_Args tpcc_args;
-}; 
+};
 
 struct SubTxn {
   SubTxn() {
-  
+
   }
   SubTxn(Txn* t) {
     txn = t;
