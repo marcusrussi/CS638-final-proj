@@ -4,7 +4,7 @@
 #ifndef _DB_SCHEDULER_TRADITIONAL_LOCK_MANAGER_H_
 #define _DB_SCHEDULER_TRADITIONAL_LOCK_MANAGER_H_
 
-#include "scheduler/lock_manager.h"
+#include "lock_manager.h"
 
 class Traditional_LockManager {
  public:
