@@ -12,11 +12,11 @@ TraditionalDeadlockExecutor::TraditionalDeadlockExecutor (const Application* app
   g_ctr1.store(WORKER_THREADS);
 
   print_word = 0;
- 
+
 
 //pthread_mutex_init(&global_, NULL);
   if (deadlock_method_ == 2) {
-    deadlock_lockmanager_ = new Waitforgraph_LockManager(application_->GetTableNum()); 
+    deadlock_lockmanager_ = new Waitforgraph_LockManager(application_->GetTableNum());
   } else if (deadlock_method_ == 3)  {
     deadlock_lockmanager_ = new Waitdie_LockManager(application_->GetTableNum());
   } else if (deadlock_method_ == 4)  {
@@ -41,7 +41,7 @@ TraditionalDeadlockExecutor::TraditionalDeadlockExecutor (const Application* app
                    reinterpret_cast<void*>(
                    new pair<int, TraditionalDeadlockExecutor*>(i, this)));
   }
-  
+
 }
 
 TraditionalDeadlockExecutor::~TraditionalDeadlockExecutor() {
@@ -50,9 +50,9 @@ TraditionalDeadlockExecutor::~TraditionalDeadlockExecutor() {
 void* TraditionalDeadlockExecutor::RunWorkerThread(void* arg) {
   int worker_id = reinterpret_cast<pair<int, TraditionalDeadlockExecutor*>*>(arg)->first;
   TraditionalDeadlockExecutor* scheduler = reinterpret_cast<pair<int, TraditionalDeadlockExecutor*>*>(arg)->second;
-  
+
   const Application* application = scheduler->application_;
-  
+
   Deadlock_LockManager* lock_manager = scheduler->deadlock_lockmanager_;
 
   Txn* transactions_input = transactions_input_queues[worker_id];
@@ -62,7 +62,7 @@ void* TraditionalDeadlockExecutor::RunWorkerThread(void* arg) {
   LatchFreeQueue<TxnManager>* abort_txns = new LatchFreeQueue<TxnManager>();
   TxnManager txn_manager;
   bool not_full;
-   
+
   Txn* txn;
   int throughput = 0;
   uint64_t input_index = 0;
@@ -70,7 +70,7 @@ void* TraditionalDeadlockExecutor::RunWorkerThread(void* arg) {
   int acquired;
   LockUnit* lock_unit;
   Traditional_TransactionManager* manager;
-  uint64_t total_input = TRANSACTIONS_GENERATED*1000000 / WORKER_THREADS;
+  uint64_t total_input = TRANSACTIONS_GENERATED / WORKER_THREADS;
 int abort_cnt = 0;
 
    lock_manager->Setup(worker_id);
@@ -88,7 +88,7 @@ uint64_t total_start, total_end, mgr_start, mgr_end, exec_start, exec_end, abort
 total_start = rdtsc();
 #endif
 
-  while (true) {  
+  while (true) {
     for (int i = 0; i < WORKER_THREADS; i++) {
       while (lm_messages[i][worker_id]->Pop(&txn) == true) {
 #ifdef PROFILER
@@ -100,7 +100,7 @@ mgr_start = rdtsc(); // Start lock
 #ifdef PROFILER
 mgr_end = rdtsc(); // End lock
 mgr_time += mgr_end - mgr_start;
-#endif         
+#endif
         manager = active_txns->Get(txn->GetTxnId());
         lock_unit = manager->CurrentLMRequest();
 #ifdef PROFILER
@@ -121,7 +121,7 @@ mgr_start = rdtsc(); // Start lock
 #ifdef PROFILER
 mgr_end = rdtsc(); // End lock
 mgr_time += mgr_end - mgr_start;
-#endif 
+#endif
             if (acquired == 0) {
 #ifdef PROFILER
 exec_start = rdtsc(); // Start exec
@@ -166,7 +166,7 @@ mgr_start = rdtsc(); // Start lock
 #ifdef PROFILER
 mgr_end = rdtsc(); // End lock
 mgr_time += mgr_end - mgr_start;
-#endif   
+#endif
             active_txns->Erase(txn->GetTxnId());
             throughput++;
             break;
@@ -180,7 +180,7 @@ mgr_time += mgr_end - mgr_start;
       if (input_index == total_input-1) {
         input_index = 0;
       }
-     
+
       if (abort_txns->Pop(&txn_manager) == true) {
         // Get a txn from abort_queue
         txn = txn_manager.txn;
@@ -194,7 +194,7 @@ mgr_time += mgr_end - mgr_start;
       }
 #ifdef PROFILER
 timestamp_start = rdtsc(); // Start timestamp
-#endif        
+#endif
 if (scheduler->deadlock_method_ == 3) {
   timestamp_ = rdtsc();
   txn->SetTimestamp(timestamp_);
@@ -203,7 +203,7 @@ if (scheduler->deadlock_method_ == 3) {
 timestamp_end = rdtsc(); // end exec/start release
 timestamp_time += timestamp_end - timestamp_start;
 #endif
-      
+
       while (true) {
         lock_unit = manager->NextLockUnit();
         if (lock_unit != NULL) {
@@ -214,7 +214,7 @@ mgr_start = rdtsc(); // Start lock
 #ifdef PROFILER
 mgr_end = rdtsc(); // End lock
 mgr_time += mgr_end - mgr_start;
-#endif  
+#endif
           if (acquired == 0) {
 #ifdef PROFILER
 exec_start = rdtsc(); // Start exec
@@ -259,7 +259,7 @@ mgr_start = rdtsc(); // Start lock
 #ifdef PROFILER
 mgr_end = rdtsc(); // End lock
 mgr_time += mgr_end - mgr_start;
-#endif  
+#endif
           throughput++;
           break;
         }
@@ -289,7 +289,7 @@ timestamp_time = 0;
       throughput = 0;
 abort_cnt = 0;
     }
-  }  
+  }
   return NULL;
 }
 
@@ -297,9 +297,9 @@ abort_cnt = 0;
 /**void* TraditionalDeadlockExecutor::RunWorkerThread(void* arg) {
   int worker_id = reinterpret_cast<pair<int, TraditionalDeadlockExecutor*>*>(arg)->first;
   TraditionalDeadlockExecutor* scheduler = reinterpret_cast<pair<int, TraditionalDeadlockExecutor*>*>(arg)->second;
-  
+
   const Application* application = scheduler->application_;
-  
+
   Deadlock_LockManager* lock_manager = scheduler->deadlock_lockmanager_;
 
   Txn* transactions_input = transactions_input_queues[worker_id];
@@ -309,7 +309,7 @@ abort_cnt = 0;
   LatchFreeQueue<TxnManager>* abort_txns = new LatchFreeQueue<TxnManager>();
   TxnManager txn_manager;
   bool not_full;
-   
+
   Txn* txn;
   int throughput = 0;
   uint64_t input_index = 0;
@@ -317,7 +317,7 @@ abort_cnt = 0;
   int acquired;
   LockUnit* lock_unit;
   Traditional_TransactionManager* manager;
-  uint64_t total_input = TRANSACTIONS_GENERATED*1000000 / WORKER_THREADS;
+  uint64_t total_input = TRANSACTIONS_GENERATED / WORKER_THREADS;
 int abort_cnt = 0;
 
    lock_manager->Setup(worker_id);
@@ -335,7 +335,7 @@ uint64_t total_start, total_end, mgr_start, mgr_end, exec_start, exec_end, abort
 total_start = rdtsc();
 #endif
 
-  while (true) {  
+  while (true) {
     for (int i = 0; i < WORKER_THREADS; i++) {
       while (lm_messages[i][worker_id]->Pop(&txn) == true) {
 #ifdef PROFILER
@@ -347,7 +347,7 @@ mgr_start = rdtsc(); // Start lock
 #ifdef PROFILER
 mgr_end = rdtsc(); // End lock
 mgr_time += mgr_end - mgr_start;
-#endif         
+#endif
         manager = active_txns->Get(txn->GetTxnId());
         lock_unit = manager->CurrentLMRequest();
 
@@ -363,7 +363,7 @@ mgr_start = rdtsc(); // Start lock
 #ifdef PROFILER
 mgr_end = rdtsc(); // End lock
 mgr_time += mgr_end - mgr_start;
-#endif 
+#endif
             if (acquired == 0) {
              // application->Execute2(lock_unit);
               continue;
@@ -406,7 +406,7 @@ exec_time += exec_end - exec_start;
 #ifdef PROFILER
 mgr_end = rdtsc(); // End lock
 mgr_time += mgr_end - mgr_start;
-#endif   
+#endif
             active_txns->Erase(txn->GetTxnId());
             throughput++;
             break;
@@ -420,7 +420,7 @@ mgr_time += mgr_end - mgr_start;
       if (input_index == total_input-1) {
         input_index = 0;
       }
-     
+
       if (abort_txns->Pop(&txn_manager) == true) {
         // Get a txn from abort_queue
         txn = txn_manager.txn;
@@ -434,7 +434,7 @@ mgr_time += mgr_end - mgr_start;
       }
 #ifdef PROFILER
 timestamp_start = rdtsc(); // Start timestamp
-#endif        
+#endif
 if (scheduler->deadlock_method_ == 3) {
   timestamp_ = rdtsc();
   txn->SetTimestamp(timestamp_);
@@ -443,7 +443,7 @@ if (scheduler->deadlock_method_ == 3) {
 timestamp_end = rdtsc(); // end exec/start release
 timestamp_time += timestamp_end - timestamp_start;
 #endif
-      
+
       while (true) {
         lock_unit = manager->NextLockUnit();
         if (lock_unit != NULL) {
@@ -454,7 +454,7 @@ mgr_start = rdtsc(); // Start lock
 #ifdef PROFILER
 mgr_end = rdtsc(); // End lock
 mgr_time += mgr_end - mgr_start;
-#endif  
+#endif
           if (acquired == 0) {
             //application->Execute2(lock_unit);
             continue;
@@ -497,7 +497,7 @@ exec_time += exec_end - exec_start;
 #ifdef PROFILER
 mgr_end = rdtsc(); // End lock
 mgr_time += mgr_end - mgr_start;
-#endif  
+#endif
           throughput++;
           break;
         }
@@ -527,7 +527,7 @@ timestamp_time = 0;
       throughput = 0;
 abort_cnt = 0;
     }
-  }  
+  }
   return NULL;
 }**/
 

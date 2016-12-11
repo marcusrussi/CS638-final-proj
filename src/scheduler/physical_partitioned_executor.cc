@@ -8,7 +8,7 @@
 using std::pair;
 
 PhysicalPartitionedExecutor::PhysicalPartitionedExecutor (const Application* application) {
-  
+
   application_ = application;
 
   g_ctr1.store(LOCK_MANAGER_THREADS);
@@ -48,7 +48,7 @@ PhysicalPartitionedExecutor::PhysicalPartitionedExecutor (const Application* app
                    reinterpret_cast<void*>(
                    new pair<int, PhysicalPartitionedExecutor*>(i, this)));
   }
-  
+
 }
 
 PhysicalPartitionedExecutor::~PhysicalPartitionedExecutor() {
@@ -62,7 +62,7 @@ void* PhysicalPartitionedExecutor::RunWorkerThread(void* arg) {
   Txn* transactions_input = transactions_input_queues[worker_id];
   PhysicalPartitioned_TransactionManager* transactions_manager = physical_partitioned_transactions_managers[worker_id];
   PhysicalHashMap_Worker* active_txns = new PhysicalHashMap_Worker();
-  
+
   Txn* txn;
   SubTxn* sub_txn;
   uint64_t txn_id;
@@ -72,7 +72,7 @@ void* PhysicalPartitionedExecutor::RunWorkerThread(void* arg) {
   uint64_t input_index = 0;
   double time = GetTime();
   PhysicalPartitioned_TransactionManager* manager;
-  uint64_t total_input = (TRANSACTIONS_GENERATED*1000000) / WORKER_THREADS;
+  uint64_t total_input = (TRANSACTIONS_GENERATED) / WORKER_THREADS;
 
   LatchFreeQueue<SubTxn*>* request_locks_queue[LOCK_MANAGER_THREADS];
   LatchFreeQueue<uint64_t>* acquired_locks_queue[LOCK_MANAGER_THREADS];
@@ -94,7 +94,7 @@ void* PhysicalPartitionedExecutor::RunWorkerThread(void* arg) {
   while (scheduler->g_ctr3.load())
     ;
 //std::cout<<"~~~~~~~~~~~~~~~I am in RunWorkerThread thread: "<<worker_id<<" .~~~~~~~~~~~~~~~\n"<<std::flush;
-  while (true) {  
+  while (true) {
     // Check whether some locks  are acquired
     for (int i = 0; i < LOCK_MANAGER_THREADS; i++) {
       while (acquired_locks_queue[i]->Pop(&txn_id) == true) {
@@ -112,10 +112,10 @@ void* PhysicalPartitionedExecutor::RunWorkerThread(void* arg) {
 
            sub_txn = manager->NextLmRequest();
          } while (sub_txn != NULL);
-    
+
          active_txns->Erase(txn_id);
          throughput++;
-      } 
+      }
     }
 
     if (active_txns->Size() < MAX_ACTIVE_TRANSACTIONS) {
@@ -133,10 +133,10 @@ void* PhysicalPartitionedExecutor::RunWorkerThread(void* arg) {
       do {
         not_full = request_locks_queue[sub_txn->lm_id]->Push(sub_txn);
       } while (not_full == false);
-      
+
       active_txns->Put(txn->GetTxnId(), manager);
-    } 
-  
+    }
+
     // Report throughput.
     if (GetTime() > time + 2) {
       double total_time = GetTime() - time;

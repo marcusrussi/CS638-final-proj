@@ -5,11 +5,11 @@
 using std::pair;
 
 TraditionalExecutor::TraditionalExecutor (const Application* application) {
-  
+
   application_ = application;
 
-  lock_manager_ = new Traditional_LockManager(application_->GetTableNum()); 
-  
+  lock_manager_ = new Traditional_LockManager(application_->GetTableNum());
+
   g_ctr1.store(WORKER_THREADS);
 
   print_word = 0;
@@ -28,7 +28,7 @@ TraditionalExecutor::TraditionalExecutor (const Application* application) {
                    reinterpret_cast<void*>(
                    new pair<int, TraditionalExecutor*>(i, this)));
   }
-  
+
 }
 
 TraditionalExecutor::~TraditionalExecutor() {
@@ -39,14 +39,14 @@ TraditionalExecutor::~TraditionalExecutor() {
 void* TraditionalExecutor::RunWorkerThread(void* arg) {
   int worker_id = reinterpret_cast<pair<int, TraditionalExecutor*>*>(arg)->first;
   TraditionalExecutor* scheduler = reinterpret_cast<pair<int, TraditionalExecutor*>*>(arg)->second;
-  
+
   const Application* application = scheduler->application_;
   Traditional_LockManager* lock_manager = scheduler->lock_manager_;
   Txn* transactions_input = transactions_input_queues[worker_id];
   Traditional_TransactionManager* transactions_manager = traditional_transactions_managers[worker_id];
 
   HashMap_Worker2* active_txns = new HashMap_Worker2();
-  
+
   Txn* txn;
   int throughput = 0;
   uint64_t input_index = 0;
@@ -54,7 +54,7 @@ void* TraditionalExecutor::RunWorkerThread(void* arg) {
   bool acquired;
   LockUnit* lock_unit;
   Traditional_TransactionManager* manager;
-  uint64_t total_input = TRANSACTIONS_GENERATED*1000000 / WORKER_THREADS;
+  uint64_t total_input = TRANSACTIONS_GENERATED / WORKER_THREADS;
 
   lock_manager->Setup(worker_id);
 
@@ -69,7 +69,7 @@ uint64_t total_start, total_end, mgr_start, mgr_end, exec_start, exec_end;
 total_start = rdtsc();
 #endif
 
-  while (true) {  
+  while (true) {
     for (int i = 0; i < WORKER_THREADS; i++) {
       while (lm_messages[i][worker_id]->Pop(&txn) == true) {
 
@@ -90,7 +90,7 @@ mgr_time += mgr_end - mgr_start;
             acquired = false;
           }
         } while (acquired == true);
-     
+
         if (lock_unit == NULL) {
 #ifdef PROFILER
 exec_start = rdtsc(); // Start exec
@@ -108,7 +108,7 @@ mgr_time += mgr_end - mgr_start;
 #endif
           active_txns->Erase(txn->GetTxnId());
           throughput++;
-        } 
+        }
 
       }
     }
@@ -138,7 +138,7 @@ mgr_time += mgr_end - mgr_start;
           acquired = false;
         }
       } while (acquired == true);
-     
+
       if (lock_unit == NULL) {
 #ifdef PROFILER
 exec_start = rdtsc(); // Start exec
@@ -182,6 +182,6 @@ exec_time = 0;
       time = GetTime();
       throughput = 0;
     }
-  }  
+  }
   return NULL;
 }

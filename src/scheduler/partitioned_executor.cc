@@ -8,7 +8,7 @@
 using std::pair;
 
 PartitionedExecutor::PartitionedExecutor (const Application* application) {
-  
+
   application_ = application;
 
   g_ctr1.store(LOCK_MANAGER_THREADS);
@@ -47,7 +47,7 @@ PartitionedExecutor::PartitionedExecutor (const Application* application) {
                    reinterpret_cast<void*>(
                    new pair<int, PartitionedExecutor*>(i, this)));
   }
-  
+
 }
 
 PartitionedExecutor::~PartitionedExecutor() {
@@ -56,12 +56,12 @@ PartitionedExecutor::~PartitionedExecutor() {
 void* PartitionedExecutor::RunWorkerThread(void* arg) {
   int worker_id = reinterpret_cast<pair<int, PartitionedExecutor*>*>(arg)->first;
   PartitionedExecutor* scheduler = reinterpret_cast<pair<int, PartitionedExecutor*>*>(arg)->second;
-  
+
   const Application* application = scheduler->application_;
   Txn* transactions_input = transactions_input_queues[worker_id];
   Partitioned_TransactionManager* transactions_manager = partitioned_transactions_managers[worker_id];
   HashMap_Worker* active_txns = new HashMap_Worker();
-  
+
   Txn* txn;
   SubTxn* sub_txn;
   uint64_t txn_id;
@@ -71,7 +71,7 @@ void* PartitionedExecutor::RunWorkerThread(void* arg) {
   uint64_t input_index = 0;
   double time = GetTime();
   Partitioned_TransactionManager* manager;
-  uint64_t total_input = (TRANSACTIONS_GENERATED*1000000) / WORKER_THREADS;
+  uint64_t total_input = (TRANSACTIONS_GENERATED) / WORKER_THREADS;
 
   LatchFreeQueue<SubTxn*>* request_locks_queue[LOCK_MANAGER_THREADS];
   LatchFreeQueue<uint64_t>* acquired_locks_queue[LOCK_MANAGER_THREADS];
@@ -86,7 +86,7 @@ void* PartitionedExecutor::RunWorkerThread(void* arg) {
     release_locks_queue[i] = scheduler->lock_manager_[i]->release_locks_queue_[worker_id];
   }
 
-  // Waiting for all worker threads to finish initialization 
+  // Waiting for all worker threads to finish initialization
   --scheduler->g_ctr3;
   while (scheduler->g_ctr3.load())
     ;
@@ -100,7 +100,7 @@ uint64_t total_start, total_end, exec_start, exec_end;
 total_start = rdtsc();
 #endif
 
-  while (true) {  
+  while (true) {
     // Check whether some locks  are acquired
     for (int i = 0; i < LOCK_MANAGER_THREADS; i++) {
       while (acquired_locks_queue[i]->Pop(&txn_id) == true) {
@@ -121,10 +121,10 @@ exec_time += exec_end - exec_start;
            } while(not_full == false);
 
            sub_txn = manager->NextLmRequest();
-         } while (sub_txn != NULL); 
+         } while (sub_txn != NULL);
          active_txns->Erase(txn_id);
          throughput++;
-      } 
+      }
     }
 
     if (active_txns->Size() < MAX_ACTIVE_TRANSACTIONS) {
@@ -143,8 +143,8 @@ exec_time += exec_end - exec_start;
       } while (not_full == false);
       active_txns->Put(txn->GetTxnId(), manager);
 
-    } 
-  
+    }
+
     // Report throughput.
     if (GetTime() > time + 2) {
       double total_time = GetTime() - time;
@@ -186,7 +186,7 @@ void* PartitionedExecutor::LockManagerThread(void* arg) {
   while (scheduler->g_ctr2.load())
     ;
 
-  // Waiting for all worker threads to finish initialization 
+  // Waiting for all worker threads to finish initialization
 
 //std::cout<<"-----------I am in LockManagerThread thread: "<<lm_id<<"  .-----------\n"<<std::flush;
 
