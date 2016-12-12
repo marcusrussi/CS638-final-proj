@@ -6,6 +6,7 @@
 
 #include "scheduler/lock_manager.h"
 #include "scheduler/partitioned_executor.h"
+#include "common/utils.h"
 
 
 class PartitionedExecutor;
@@ -29,10 +30,10 @@ class LockManager {
 
  private:
 
-  Bucket* lock_table_;
+  Traditional_Bucket* lock_table_;
 
   int lm_id_;
-  
+
   Keys_Freelist* keys_freelist;
   Lockrequest_Freelist* lockrequest_freelist;
 

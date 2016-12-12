@@ -18,16 +18,17 @@ LockManager::LockManager(int lm_id, uint32_t table_num) {
       communication_receive_queue_[i] = new LatchFreeQueue<SubTxn*>(LM_QUEUE_SIZE);
     }
   }
-  
+
   if (table_num_ == 1) {
     // For microbenchmark(YCSB)
     table_buckets[0] = BUCKET_SIZE;
     table_sum_buckets[0] = 0;
 
-    lock_table_ = (Bucket*)malloc(sizeof(Bucket)*BUCKET_SIZE*table_num_);
-    memset(lock_table_, 0x00, sizeof(Bucket)*BUCKET_SIZE*table_num_);
+    lock_table_ = (Traditional_Bucket*)malloc(sizeof(Traditional_Bucket)*BUCKET_SIZE*table_num_);
+    memset(lock_table_, 0x00, sizeof(Traditional_Bucket)*BUCKET_SIZE*table_num_);
     for (uint32_t i = 0; i < BUCKET_SIZE*table_num_; i++) {
       lock_table_[i].head = NULL;
+      pthread_mutex_init(&(lock_table_[i].latch), NULL);
     }
   } else if (table_num_ == 9){
     // For tpcc
@@ -49,8 +50,8 @@ LockManager::LockManager(int lm_id, uint32_t table_num) {
       }
     }
 
-    lock_table_ = (Bucket*)malloc(sizeof(Bucket)*(table_sum_buckets[8] + table_buckets[8]));
-    memset(lock_table_, 0x00, sizeof(Bucket)*(table_sum_buckets[8] + table_buckets[8]));
+    lock_table_ = (Traditional_Bucket*)malloc(sizeof(Traditional_Bucket)*(table_sum_buckets[8] + table_buckets[8]));
+    memset(lock_table_, 0x00, sizeof(Traditional_Bucket)*(table_sum_buckets[8] + table_buckets[8]));
     for (uint32_t i = 0; i < (table_sum_buckets[8] + table_buckets[8]); i++) {
       lock_table_[i].head = NULL;
     }
@@ -68,8 +69,8 @@ LockManager::LockManager(int lm_id, uint32_t table_num) {
       }
     }
 
-    lock_table_ = (Bucket*)malloc(sizeof(Bucket)*BUCKET_SIZE*table_num_);
-    memset(lock_table_, 0x00, sizeof(Bucket)*BUCKET_SIZE*table_num_);
+    lock_table_ = (Traditional_Bucket*)malloc(sizeof(Traditional_Bucket)*BUCKET_SIZE*table_num_);
+    memset(lock_table_, 0x00, sizeof(Traditional_Bucket)*BUCKET_SIZE*table_num_);
     for (uint32_t i = 0; i < BUCKET_SIZE*table_num_; i++) {
       lock_table_[i].head = NULL;
     }
@@ -100,7 +101,8 @@ void LockManager::Lock(SubTxn* sub_txn) {
     uint64_t key = table_key.key;
     uint32_t table_id = table_key.table_id;
 
-    Bucket* bucket =  lock_table_ + Hash(key) % table_buckets[table_id] + table_sum_buckets[table_id];
+    Traditional_Bucket* bucket =  lock_table_ + Hash(key) % table_buckets[table_id] + table_sum_buckets[table_id];
+    pthread_mutex_lock(&(bucket->latch));
     KeysList* key_list;
 
     if (bucket->head == NULL) {
@@ -123,7 +125,7 @@ void LockManager::Lock(SubTxn* sub_txn) {
         key_list = key_list->next;
 
       } while (key_list != NULL);
-   
+
       if (found == false) {
         key_list = keys_freelist->Get();
         key_list->key = key;
@@ -141,14 +143,16 @@ void LockManager::Lock(SubTxn* sub_txn) {
       key_list->head = lock_request;
       key_list->tail = lock_request;
     } else {
-      key_list->tail->next = lock_request; 
+      key_list->tail->next = lock_request;
       lock_request->prev = key_list->tail;
       key_list->tail = lock_request;
       lock_request->txn = txn;
       lock_request->mode = WRITE;
       lock_request->next_sub_txn = sub_txn->next_sub_txn;
       not_acquired++;
-    }    
+    }
+
+    pthread_mutex_unlock(&(bucket->latch));
   }
 
 
@@ -157,7 +161,9 @@ void LockManager::Lock(SubTxn* sub_txn) {
     TableKey table_key = txn->GetReadSet(i);
     uint64_t key = table_key.key;
     uint32_t table_id = table_key.table_id;
-    Bucket* bucket =  lock_table_ + Hash(key) % table_buckets[table_id] + table_sum_buckets[table_id];
+
+    Traditional_Bucket* bucket =  lock_table_ + Hash(key) % table_buckets[table_id] + table_sum_buckets[table_id];
+    pthread_mutex_lock(&(bucket->latch));
     KeysList* key_list;
 
     if (bucket->head == NULL) {
@@ -176,7 +182,7 @@ void LockManager::Lock(SubTxn* sub_txn) {
         previous = key_list;
         key_list = key_list->next;
       }while (key_list != NULL);
-   
+
       if (found == false) {
         key_list = keys_freelist->Get();
         key_list->key = key;
@@ -194,7 +200,7 @@ void LockManager::Lock(SubTxn* sub_txn) {
       key_list->head = lock_request;
       key_list->tail = lock_request;
     } else {
-      key_list->tail->next = lock_request; 
+      key_list->tail->next = lock_request;
       lock_request->prev = key_list->tail;
       key_list->tail = lock_request;
       lock_request->txn = txn;
@@ -210,6 +216,8 @@ void LockManager::Lock(SubTxn* sub_txn) {
         lock_request = lock_request->next;
       }while(lock_request != NULL);
     }
+
+    pthread_mutex_unlock(&(bucket->latch));
   }
 
   // Record and return the number of locks that the txn is blocked on.
@@ -246,7 +254,9 @@ void LockManager::Release(SubTxn* sub_txn) {
 void LockManager::Release(const TableKey table_key, Txn* txn) {
   uint64_t key = table_key.key;
   uint32_t table_id = table_key.table_id;
-  Bucket* bucket =  lock_table_ + Hash(key) % table_buckets[table_id] + table_sum_buckets[table_id];
+
+  Traditional_Bucket* bucket =  lock_table_ + Hash(key) % table_buckets[table_id] + table_sum_buckets[table_id];
+  pthread_mutex_lock(&(bucket->latch));
   KeysList* key_list = bucket->head;
 
   assert(key_list != NULL);
@@ -265,17 +275,17 @@ void LockManager::Release(const TableKey table_key, Txn* txn) {
       break;
     }
     if (target->mode == WRITE) {
-      write_requests_precede_target = true; 
+      write_requests_precede_target = true;
     }
     target = target->next;
   } while(target != NULL);
-  
+
   LockRequest* following_locks = target->next;
-  
+
 //if (target == key_list->head)
 //std::cout<<"This lock is the head.\n"<<std::flush;
 //if (target->next == NULL)
-//std::cout<<"This lock is the only one.\n"<<std::flush; 
+//std::cout<<"This lock is the only one.\n"<<std::flush;
   if (following_locks != NULL) {
     // Grant subsequent request(s) if:
     //  (a) The canceled request held a write lock.
@@ -354,5 +364,7 @@ void LockManager::Release(const TableKey table_key, Txn* txn) {
     target->next->prev = target->prev;
     lockrequest_freelist->Put(target);
   }
+
+  pthread_mutex_unlock(&(bucket->latch));
 }
 
