@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
 
   if (StringToInt(argv[1]) == 8) {
     if (argv[2][0] == 'm') {
-      application = new Microbenchmark(LOCK_MANAGER_THREADS, HOT, lm_cnt_per_txn, storage);
+      application = new Microbenchmark(LOCK_MANAGER_THREADS, LM_THREADS_PER_PARTITION, HOT, lm_cnt_per_txn, storage);
     } else if (argv[2][0] == 't'){
       // For TPCC
       application = new TPCC(LOCK_MANAGER_THREADS, storage);

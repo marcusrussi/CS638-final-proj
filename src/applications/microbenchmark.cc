@@ -72,7 +72,7 @@ void Microbenchmark::MicroTxnMltiple(Txn* txn, uint64_t txn_id, int mp) const {
   int left = kRWSetSize - per_partition*mp;
 
   set<uint64_t> partitions;
-  
+
 
   int size;
   int current_partition;
@@ -173,7 +173,7 @@ int Microbenchmark::Execute(Txn* txn) const {
 
   for (uint32_t i = 0; i < txn->read_write_cnt; i++) {
     TableKey table_key = txn->GetReadWriteSet(i);
-    char* val = (char*)storage_->ReadRecord(table_key.table_id, table_key.key);   
+    char* val = (char*)storage_->ReadRecord(table_key.table_id, table_key.key);
     for (int j = 0; j < 8; j++) {
       *(uint64_t*)&val[j*8] = *(uint64_t*)&val[j*8] + count_writer;
       count_writer = count_writer/10 + (*(uint64_t*)&val[j*8])/10;
@@ -182,7 +182,7 @@ int Microbenchmark::Execute(Txn* txn) const {
 
   for (uint32_t i = 0; i < txn->read_cnt; i++) {
     TableKey table_key = txn->GetReadSet(i);
-    char* val = (char*)storage_->ReadRecord(table_key.table_id, table_key.key);   
+    char* val = (char*)storage_->ReadRecord(table_key.table_id, table_key.key);
     for (int j = 0; j < 8; j++) {
       count_reader = count_reader + *(uint64_t*)&val[j*8];
       count_reader = count_reader/10 + (*(uint64_t*)&val[j*8])/10;
@@ -193,7 +193,8 @@ int Microbenchmark::Execute(Txn* txn) const {
 }
 
 uint32_t Microbenchmark::LookupPartition(const uint64_t& key) const {
-  return key % lm_count_;
+  // return key % lm_count_;
+  return key % (lm_count_ / lm_threads_per_partition_);
 }
 
 uint32_t Microbenchmark::GetTableNum() const {
@@ -204,9 +205,9 @@ void Microbenchmark::InitializeStorage() const {
   char* int_buffer = (char *)malloc(sizeof(char)*kValueSize);
   uint64_t* big_int = (uint64_t*)int_buffer;
   for (int j = 0; j < kValueSize / 8; j++) {
-    big_int[j] = (uint64_t)rand(); 
+    big_int[j] = (uint64_t)rand();
   }
-  
+
   storage_->NewTable(0, kDBSize, kDBSize + 1, kValueSize);
 
   for (uint64_t i = 0; i < kDBSize; i++) {
@@ -221,7 +222,7 @@ int Microbenchmark::Rollback(LockUnit* lock_unit) const {
   return 0;
 }
 
-void Microbenchmark::InitializeTable(uint32_t table_id) const {  
+void Microbenchmark::InitializeTable(uint32_t table_id) const {
 }
 
 

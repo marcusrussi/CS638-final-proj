@@ -21,8 +21,9 @@ class Microbenchmark : public Application {
     MICROTXN_SUPER_LONG = 3,
   };
 
-  Microbenchmark(int lm_count, int hotcount, int percent_mp, Storage* storage) {
+  Microbenchmark(int lm_count, int lm_threads_per_partition, int hotcount, int percent_mp, Storage* storage) {
     lm_count_ = lm_count;
+    lm_threads_per_partition_ = lm_threads_per_partition;
     hot_records = hotcount;
     if (hotcount % lm_count == 0) {
       hot_records_per_lm = hotcount / lm_count;
@@ -49,6 +50,7 @@ class Microbenchmark : public Application {
   virtual uint32_t GetTableNum() const;
 
   int lm_count_;
+  int lm_threads_per_partition_;
   int hot_records;
   int hot_records_per_lm;
   int percent_mp_;
