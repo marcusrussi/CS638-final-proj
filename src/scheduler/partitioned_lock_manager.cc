@@ -81,6 +81,7 @@ LockManager::LockManager(int lm_id, uint32_t table_num) {
   lockrequest_freelist = new Lockrequest_Freelist();
 
   txn_wait = new HashMap_Lm();
+  progressed_subtxns = new SetArray_txn();
 }
 
 void LockManager::Setup(PartitionedExecutor* scheduler) {
@@ -136,20 +137,29 @@ void LockManager::Lock(SubTxn* sub_txn) {
 
     // Already got the key_list
     LockRequest* lock_request = lockrequest_freelist->Get();
-    if (key_list->head == NULL) {
+    if (key_list->head == NULL) { // SUCCESS, nobody has the lock
       lock_request->txn = txn;
       lock_request->mode = WRITE;
       lock_request->next_sub_txn = sub_txn->next_sub_txn;
       key_list->head = lock_request;
       key_list->tail = lock_request;
-    } else {
-      key_list->tail->next = lock_request;
-      lock_request->prev = key_list->tail;
-      key_list->tail = lock_request;
-      lock_request->txn = txn;
-      lock_request->mode = WRITE;
-      lock_request->next_sub_txn = sub_txn->next_sub_txn;
-      not_acquired++;
+    } else { // someone has the lock
+      if (key_list->head->txn == txn) {
+        lockrequest_freelist->Put(lock_request);
+      } else { // it's actually someone else, so do the usual
+        key_list->tail->next = lock_request;
+        lock_request->prev = key_list->tail;
+        key_list->tail = lock_request;
+        lock_request->txn = txn;
+        lock_request->mode = WRITE;
+        lock_request->next_sub_txn = sub_txn->next_sub_txn;
+        not_acquired++;
+
+        // Since we weren't able to get a lock, we have to exit
+        // so that things get acquired in order.
+        pthread_mutex_unlock(&(bucket->latch));
+        return;
+      }
     }
 
     pthread_mutex_unlock(&(bucket->latch));
@@ -199,7 +209,7 @@ void LockManager::Lock(SubTxn* sub_txn) {
       lock_request->next_sub_txn = sub_txn->next_sub_txn;
       key_list->head = lock_request;
       key_list->tail = lock_request;
-    } else {
+    } else { // Some transaction, or group of transactions, have a lock
       key_list->tail->next = lock_request;
       lock_request->prev = key_list->tail;
       key_list->tail = lock_request;
@@ -211,7 +221,25 @@ void LockManager::Lock(SubTxn* sub_txn) {
       do {
         if (lock_request->mode == WRITE) {
           not_acquired++;
-          break;
+
+          // break;
+          // New: Must immediately exit to prevent any additional locks
+          // from being acquired
+          pthread_mutex_unlock(&(bucket->latch));
+          return;
+        }
+        if (lock_request->txn == txn) {
+          // remove ourselves from the tail if this isn't the tail
+          if (key_list->tail != lock_request) { // We are not at the tail
+            // Erase the tail
+            lock_request = key_list->tail;
+            key_list->tail = lock_request->prev;
+            key_list->tail->next = NULL;
+
+            // Recycle the lock request
+            lockrequest_freelist->Put(lock_request);
+            break;
+          }
         }
         lock_request = lock_request->next;
       }while(lock_request != NULL);
@@ -220,10 +248,11 @@ void LockManager::Lock(SubTxn* sub_txn) {
     pthread_mutex_unlock(&(bucket->latch));
   }
 
+
   // Record and return the number of locks that the txn is blocked on.
-  if (not_acquired > 0) {
-    txn_wait->Put(txn->GetTxnId(), not_acquired);
-  } else {
+  // if (not_acquired > 0) {
+    // txn_wait->Put(txn->GetTxnId(), not_acquired);
+  // } else {
     if (sub_txn->next_sub_txn == NULL) {
       bool not_full;
       do {
@@ -234,7 +263,7 @@ void LockManager::Lock(SubTxn* sub_txn) {
       //communication_send_queue_[sub_txn->next_sub_txn->lm_id]->Push(sub_txn->next_sub_txn);
       communication_send_queue_[sub_txn->next_lm_id]->Push(sub_txn->next_sub_txn);
     }
-  }
+  // }
 }
 
 

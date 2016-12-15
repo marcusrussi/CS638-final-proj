@@ -38,6 +38,7 @@ class LockManager {
   Lockrequest_Freelist* lockrequest_freelist;
 
   HashMap_Lm* txn_wait;
+  SetArray_txn* progressed_subtxns;
 
   uint32_t table_num_;
 
