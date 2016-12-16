@@ -24,11 +24,15 @@ LockManager::LockManager(int lm_id, uint32_t table_num) {
     table_buckets[0] = BUCKET_SIZE;
     table_sum_buckets[0] = 0;
 
-    lock_table_ = (Traditional_Bucket*)malloc(sizeof(Traditional_Bucket)*BUCKET_SIZE*table_num_);
-    memset(lock_table_, 0x00, sizeof(Traditional_Bucket)*BUCKET_SIZE*table_num_);
-    for (uint32_t i = 0; i < BUCKET_SIZE*table_num_; i++) {
-      lock_table_[i].head = NULL;
-      pthread_mutex_init(&(lock_table_[i].latch), NULL);
+    // If this lock manager thread is the master thread for its partition,
+    // initialize the lock table and associated mutexes
+    if (lm_id % LM_THREADS_PER_PARTITION == 0) {
+      lock_table_ = (Traditional_Bucket*)malloc(sizeof(Traditional_Bucket)*BUCKET_SIZE*table_num_);
+      memset(lock_table_, 0x00, sizeof(Traditional_Bucket)*BUCKET_SIZE*table_num_);
+      for (uint32_t i = 0; i < BUCKET_SIZE*table_num_; i++) {
+        lock_table_[i].head = NULL;
+        pthread_mutex_init(&(lock_table_[i].latch), NULL);
+      }
     }
   } else if (table_num_ == 9){
     // For tpcc
@@ -89,6 +93,11 @@ void LockManager::Setup(PartitionedExecutor* scheduler) {
       communication_send_queue_[i] = scheduler->lock_manager_[i]->communication_receive_queue_[lm_id_];
     }
   }
+
+  int partition_master_id = lm_id_ - (lm_id_ % LM_THREADS_PER_PARTITION);
+  if (partition_master_id != lm_id_) {
+    lock_table_ = scheduler->lock_manager_[partition_master_id]->lock_table_;
+  }
 }
 
 void LockManager::Lock(SubTxn* sub_txn) {
@@ -103,6 +112,7 @@ void LockManager::Lock(SubTxn* sub_txn) {
 
     Traditional_Bucket* bucket =  lock_table_ + Hash(key) % table_buckets[table_id] + table_sum_buckets[table_id];
     pthread_mutex_lock(&(bucket->latch));
+    printf("txnid %d: locked bucket\n", txn->txn_id);
     KeysList* key_list;
 
     if (bucket->head == NULL) {
@@ -153,6 +163,7 @@ void LockManager::Lock(SubTxn* sub_txn) {
     }
 
     pthread_mutex_unlock(&(bucket->latch));
+    printf("txnid %d: unlocked bucket\n", txn->txn_id);
   }
 
 
@@ -164,6 +175,7 @@ void LockManager::Lock(SubTxn* sub_txn) {
 
     Traditional_Bucket* bucket =  lock_table_ + Hash(key) % table_buckets[table_id] + table_sum_buckets[table_id];
     pthread_mutex_lock(&(bucket->latch));
+    printf("txnid %d: locked bucket\n", txn->txn_id);
     KeysList* key_list;
 
     if (bucket->head == NULL) {
@@ -218,7 +230,10 @@ void LockManager::Lock(SubTxn* sub_txn) {
     }
 
     pthread_mutex_unlock(&(bucket->latch));
+    printf("txnid %d: unlocked bucket\n", txn->txn_id);
   }
+
+  printf("txnid %d: acquired all locks\n", txn->txn_id);
 
   // Record and return the number of locks that the txn is blocked on.
   if (not_acquired > 0) {
@@ -257,6 +272,7 @@ void LockManager::Release(const TableKey table_key, Txn* txn) {
 
   Traditional_Bucket* bucket =  lock_table_ + Hash(key) % table_buckets[table_id] + table_sum_buckets[table_id];
   pthread_mutex_lock(&(bucket->latch));
+  printf("txnid %d: locked bucket\n", txn->txn_id);
   KeysList* key_list = bucket->head;
 
   assert(key_list != NULL);
@@ -366,5 +382,6 @@ void LockManager::Release(const TableKey table_key, Txn* txn) {
   }
 
   pthread_mutex_unlock(&(bucket->latch));
+  printf("txnid %d: unlocked bucket\n", txn->txn_id);
 }
 

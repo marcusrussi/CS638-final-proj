@@ -50,7 +50,6 @@ class Microbenchmark : public Application {
   virtual uint32_t GetTableNum() const;
 
   int lm_count_;
-  int lm_threads_per_partition_;
   int hot_records;
   int hot_records_per_lm;
   int percent_mp_;

@@ -35,6 +35,8 @@ class Application {
 
   virtual int Execute2(LockUnit* lock_unit) const = 0;
   virtual int Rollback(LockUnit* lock_unit) const = 0;
+
+  int lm_threads_per_partition_;
 };
 
 #endif  // _DB_APPLICATIONS_APPLICATION_H_

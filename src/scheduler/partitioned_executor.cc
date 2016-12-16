@@ -25,18 +25,18 @@ PartitionedExecutor::PartitionedExecutor (const Application* application) {
   int next_worker = 0;
   for (int i = 0; i < LOCK_MANAGER_THREADS; i++) {
     //if cannot fit full partition on numa node
-    if ((i % LM_THREADS_PER_PARTITION == 0) && 
-        ((next_cpu % CPUS_PER_NUMA) + LM_THREADS_PER_PARTITION >= CPUS_PER_NUMA)) 
+    if ((i % LM_THREADS_PER_PARTITION == 0) &&
+        ((next_cpu % 10/*CPUS_PER_NUMA*/) + LM_THREADS_PER_PARTITION >= 10/*CPUS_PER_NUMA*/))
     {
       //fill rest of numa node with worker threads
-      while (next_cpu % CPUS_PER_NUMA != 0) 
+      while (next_cpu % 10/*CPUS_PER_NUMA*/ != 0)
       {
         worker_cpus[next_worker] = next_cpu;
         next_worker++;
-        next_cpu++; 
+        next_cpu++;
       }
     }
-    
+
     lock_manager_cpus[i] = next_cpu;
     next_cpu++;
   }
@@ -45,15 +45,15 @@ PartitionedExecutor::PartitionedExecutor (const Application* application) {
     worker_cpus[i] = next_cpu;
     next_cpu++;
   }
-/*  
-  for (int i = 0; i < LOCK_MANAGER_THREADS; i++) {
-    printf("lock_manager %d: cpu %d\n", i, lock_manager_cpus[i]);
-  }
-  for (int i = 0; i < WORKER_THREADS; i++) {
-    printf("worker thread %d: cpu %d\n", i, worker_cpus[i]);
-  }
-exit(1);
-*/
+
+  // for (int i = 0; i < LOCK_MANAGER_THREADS; i++) {
+  //   printf("lock_manager %d: cpu %d\n", i, lock_manager_cpus[i]);
+  // }
+  // for (int i = 0; i < WORKER_THREADS; i++) {
+  //   printf("worker thread %d: cpu %d\n", i, worker_cpus[i]);
+  // }
+// exit(1);
+
 //end added---
 
   for (int i = 0; i < LOCK_MANAGER_THREADS; i++) {
@@ -220,13 +220,14 @@ void* PartitionedExecutor::LockManagerThread(void* arg) {
   LockManager* lock_manager = scheduler->lock_manager_[lm_id];
   lock_manager->Setup(scheduler);
 
+  // Waiting for all worker threads to finish initialization
+  // printf("LockManagerThread #%2d, lock_table_ pointer = %p\n", lm_id, lock_manager->lock_table_);
+
   --scheduler->g_ctr2;
   while (scheduler->g_ctr2.load())
     ;
 
-  // Waiting for all worker threads to finish initialization
-
-//std::cout<<"-----------I am in LockManagerThread thread: "<<lm_id<<"  .-----------\n"<<std::flush;
+  // exit(1);
 
   while (true) {
     // First check whether there are transactions in the request_locks_queue_

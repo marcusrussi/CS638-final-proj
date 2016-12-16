@@ -63,16 +63,16 @@ void Partitioned_TransactionManager::Setup(Txn* txn, const Application* applicat
   for (uint32_t i = 0; i < txn->ReadWriteSetSize(); i++) {
     involved_lms[application_->LookupPartition(txn->GetReadWriteSet(i).key)] = true;
   }
-  
+
   int actual_lm = 0;
   for(int i = 0; i < LOCK_MANAGER_THREADS; i++) {
     if (involved_lms[i] == true) {
       actual_lm++;
     }
   }
-  
+
 //  sub_txns = (SubTxn*)malloc(sizeof(SubTxn) * actual_lm);
-  
+
   current_index = 0;
   sub_txns_cnt = 0;
 
@@ -105,7 +105,7 @@ void Partitioned_TransactionManager::Setup(Txn* txn, const Application* applicat
     sub_txns[sub_txns_cnt].write_key_start = write_key_start;
     sub_txns[sub_txns_cnt].write_key_end = write_key_end;
     sub_txns[sub_txns_cnt].txn = txn;
-    sub_txns[sub_txns_cnt].lm_id = lm;
+    sub_txns[sub_txns_cnt].lm_id = lm + (rand() % 2/*application_->lm_threads_per_partition_*/);
 
     sub_txns_cnt++;
 

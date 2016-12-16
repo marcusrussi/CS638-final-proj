@@ -28,9 +28,9 @@ class LockManager {
 
   LatchFreeQueue<SubTxn*>* communication_send_queue_[LOCK_MANAGER_THREADS];
 
- private:
-
   Traditional_Bucket* lock_table_;
+
+ private:
 
   int lm_id_;
 
