@@ -17,6 +17,44 @@ PartitionedExecutor::PartitionedExecutor (const Application* application) {
 
   print_word = 0;
 //  barrier();
+//added:
+  int lock_manager_cpus[LOCK_MANAGER_THREADS];
+  int worker_cpus[WORKER_THREADS];
+
+  int next_cpu = 0;
+  int next_worker = 0;
+  for (int i = 0; i < LOCK_MANAGER_THREADS; i++) {
+    //if cannot fit full partition on numa node
+    if ((i % LM_THREADS_PER_PARTITION == 0) && 
+        ((next_cpu % CPUS_PER_NUMA) + LM_THREADS_PER_PARTITION >= CPUS_PER_NUMA)) 
+    {
+      //fill rest of numa node with worker threads
+      while (next_cpu % CPUS_PER_NUMA != 0) 
+      {
+        worker_cpus[next_worker] = next_cpu;
+        next_worker++;
+        next_cpu++; 
+      }
+    }
+    
+    lock_manager_cpus[i] = next_cpu;
+    next_cpu++;
+  }
+
+  for (int i = next_worker; i < WORKER_THREADS; i++) {
+    worker_cpus[i] = next_cpu;
+    next_cpu++;
+  }
+/*  
+  for (int i = 0; i < LOCK_MANAGER_THREADS; i++) {
+    printf("lock_manager %d: cpu %d\n", i, lock_manager_cpus[i]);
+  }
+  for (int i = 0; i < WORKER_THREADS; i++) {
+    printf("worker thread %d: cpu %d\n", i, worker_cpus[i]);
+  }
+exit(1);
+*/
+//end added---
 
   for (int i = 0; i < LOCK_MANAGER_THREADS; i++) {
     cpu_set_t cpuset;
@@ -24,7 +62,7 @@ PartitionedExecutor::PartitionedExecutor (const Application* application) {
     pthread_attr_init(&attr);
     CPU_ZERO(&cpuset);
 
-    CPU_SET(i, &cpuset);
+    CPU_SET(lock_manager_cpus[i], &cpuset);
     pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset);
 
     pthread_create(&(lm_threads_[i]), &attr, LockManagerThread,
@@ -40,7 +78,7 @@ PartitionedExecutor::PartitionedExecutor (const Application* application) {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     CPU_ZERO(&cpuset);
-    CPU_SET(LOCK_MANAGER_THREADS + i, &cpuset);
+    CPU_SET(worker_cpus[i], &cpuset);
     pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset);
 
     pthread_create(&(worker_threads_[i]), &attr, RunWorkerThread,

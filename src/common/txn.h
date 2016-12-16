@@ -25,6 +25,7 @@
 #define WORKER_THREADS  60     // Number of worker threads
 #define LOCK_MANAGER_THREADS  20  // Number of lock manager threads. This is only for partitioned_lm(Orthrus)
 #define LM_THREADS_PER_PARTITION 4 // Number of lock manager threads per partition
+#define CPUS_PER_NUMA 10
 #define QUEUE_SIZE 64
 #define LM_QUEUE_SIZE  512
 #define MAX_ACTIVE_TRANSACTIONS 1  // Number of max active transactions per worker thread (Should set it bigger, say 5 for low conention&random setting, should set smaller for high contention, say 1.)
