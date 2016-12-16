@@ -105,7 +105,7 @@ void Partitioned_TransactionManager::Setup(Txn* txn, const Application* applicat
     sub_txns[sub_txns_cnt].write_key_start = write_key_start;
     sub_txns[sub_txns_cnt].write_key_end = write_key_end;
     sub_txns[sub_txns_cnt].txn = txn;
-    sub_txns[sub_txns_cnt].lm_id = lm + (rand() % 2/*application_->lm_threads_per_partition_*/);
+    sub_txns[sub_txns_cnt].lm_id = lm + 1;// + (rand() % application_->lm_threads_per_partition_);
 
     sub_txns_cnt++;
 
