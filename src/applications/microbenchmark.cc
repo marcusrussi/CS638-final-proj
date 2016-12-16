@@ -194,7 +194,7 @@ int Microbenchmark::Execute(Txn* txn) const {
 
 uint32_t Microbenchmark::LookupPartition(const uint64_t& key) const {
   // return key % lm_count_;
-  return key % (lm_count_ / lm_threads_per_partition_);
+  return lm_threads_per_partition_ * (key % (lm_count_ / lm_threads_per_partition_));
 }
 
 uint32_t Microbenchmark::GetTableNum() const {

@@ -141,6 +141,7 @@ void LockManager::Lock(SubTxn* sub_txn) {
       lock_request->txn = txn;
       lock_request->mode = WRITE;
       lock_request->next_sub_txn = sub_txn->next_sub_txn;
+      lock_request->current_sub_txn = sub_txn;
       key_list->head = lock_request;
       key_list->tail = lock_request;
     } else { // someone has the lock
@@ -153,6 +154,7 @@ void LockManager::Lock(SubTxn* sub_txn) {
         lock_request->txn = txn;
         lock_request->mode = WRITE;
         lock_request->next_sub_txn = sub_txn->next_sub_txn;
+        lock_request->current_sub_txn = sub_txn;
         not_acquired++;
 
         // Since we weren't able to get a lock, we have to exit
@@ -207,6 +209,7 @@ void LockManager::Lock(SubTxn* sub_txn) {
       lock_request->txn = txn;
       lock_request->mode = READ;
       lock_request->next_sub_txn = sub_txn->next_sub_txn;
+      lock_request->current_sub_txn = sub_txn;
       key_list->head = lock_request;
       key_list->tail = lock_request;
     } else { // Some transaction, or group of transactions, have a lock
@@ -216,6 +219,7 @@ void LockManager::Lock(SubTxn* sub_txn) {
       lock_request->txn = txn;
       lock_request->mode = READ;
       lock_request->next_sub_txn = sub_txn->next_sub_txn;
+      lock_request->current_sub_txn = sub_txn;
 
       lock_request = key_list->head;
       do {
@@ -277,6 +281,10 @@ void LockManager::Release(SubTxn* sub_txn) {
   for (uint32_t i = sub_txn->read_key_start; i < sub_txn->read_key_end; i++) {
     Release(txn->GetReadSet(i), txn);
   }
+
+  SubTxn* progressing_subtxn = NULL;
+  while ((progressing_subtxn = progressed_subtxns->Pop()) != NULL)
+    Lock(progressing_subtxn);
 }
 
 
@@ -325,45 +333,49 @@ void LockManager::Release(const TableKey table_key, Txn* txn) {
 
       // If a write lock request follows, grant it.
       if (following_locks->mode == WRITE) {
-        if (txn_wait->DecreaseAndIfZero(following_locks->txn->GetTxnId()) == true) {
-          if (following_locks->next_sub_txn == NULL) {
-            bool not_full;
-            do {
-              not_full = acquired_locks_queue_[following_locks->txn->GetWorkerId()]->Push(following_locks->txn->GetTxnId());
-            } while (not_full == false);
-          } else {
-            communication_send_queue_[following_locks->next_sub_txn->lm_id]->Push(following_locks->next_sub_txn);
-          }
-        }
+        progressed_subtxns->Add(following_locks->current_sub_txn);
+        // if (txn_wait->DecreaseAndIfZero(following_locks->txn->GetTxnId()) == true) {
+        //   if (following_locks->next_sub_txn == NULL) {
+        //     bool not_full;
+        //     do {
+        //       not_full = acquired_locks_queue_[following_locks->txn->GetWorkerId()]->Push(following_locks->txn->GetTxnId());
+        //     } while (not_full == false);
+        //   } else {
+        //     communication_send_queue_[following_locks->next_sub_txn->lm_id]->Push(following_locks->next_sub_txn);
+        //   }
+        // }
+
       }
 
       // If a sequence of read lock requests follows, grant all of them.
       for (; following_locks != NULL && following_locks->mode == READ; following_locks = following_locks->next) {
-        if (txn_wait->DecreaseAndIfZero(following_locks->txn->GetTxnId()) ) {
-          if (following_locks->next_sub_txn == NULL) {
-            bool not_full;
-            do {
-              not_full = acquired_locks_queue_[following_locks->txn->GetWorkerId()]->Push(following_locks->txn->GetTxnId());
-            } while (not_full == false);
-          } else {
-            communication_send_queue_[following_locks->next_sub_txn->lm_id]->Push(following_locks->next_sub_txn);
-          }
-        }
+        progressed_subtxns->Add(following_locks->current_sub_txn);
+        // if (txn_wait->DecreaseAndIfZero(following_locks->txn->GetTxnId()) ) {
+        //   if (following_locks->next_sub_txn == NULL) {
+        //     bool not_full;
+        //     do {
+        //       not_full = acquired_locks_queue_[following_locks->txn->GetWorkerId()]->Push(following_locks->txn->GetTxnId());
+        //     } while (not_full == false);
+        //   } else {
+        //     communication_send_queue_[following_locks->next_sub_txn->lm_id]->Push(following_locks->next_sub_txn);
+        //   }
+        // }
       }
 
     } else if (!write_requests_precede_target && target->mode == WRITE && following_locks->mode == READ) {  // (c)
       // If a sequence of read lock requests follows, grant all of them.
       for (; following_locks != NULL && following_locks->mode == READ; following_locks = following_locks->next) {
-        if (txn_wait->DecreaseAndIfZero(following_locks->txn->GetTxnId()) ) {
-          if (following_locks->next_sub_txn == NULL) {
-            bool not_full;
-            do {
-              not_full = acquired_locks_queue_[following_locks->txn->GetWorkerId()]->Push(following_locks->txn->GetTxnId());
-            } while (not_full == false);
-          } else {
-            communication_send_queue_[following_locks->next_sub_txn->lm_id]->Push(following_locks->next_sub_txn);
-          }
-        }
+        progressed_subtxns->Add(following_locks->current_sub_txn);
+        // if (txn_wait->DecreaseAndIfZero(following_locks->txn->GetTxnId()) ) {
+        //   if (following_locks->next_sub_txn == NULL) {
+        //     bool not_full;
+        //     do {
+        //       not_full = acquired_locks_queue_[following_locks->txn->GetWorkerId()]->Push(following_locks->txn->GetTxnId());
+        //     } while (not_full == false);
+        //   } else {
+        //     communication_send_queue_[following_locks->next_sub_txn->lm_id]->Push(following_locks->next_sub_txn);
+        //   }
+        // }
       }
     } // end "else if"
   } // end "if"

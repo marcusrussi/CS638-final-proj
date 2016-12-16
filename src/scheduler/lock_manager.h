@@ -28,6 +28,7 @@ struct LockUnit {
     LockRequest* next;
     LockRequest* prev;
     SubTxn* next_sub_txn;
+    SubTxn* current_sub_txn;
     //char pad[CACHE_LINE - sizeof(void *)*3 - sizeof(LockMode)];
   };
 
