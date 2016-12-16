@@ -28,6 +28,7 @@ struct LockUnit {
     LockRequest* next;
     LockRequest* prev;
     SubTxn* next_sub_txn;
+    SubTxn* current_sub_txn;
     //char pad[CACHE_LINE - sizeof(void *)*3 - sizeof(LockMode)];
   };
 
@@ -40,14 +41,14 @@ struct LockUnit {
 
     //char pad[CACHE_LINE - sizeof(void *)*4 - sizeof(uint64_t)];
   };
-  
+
 class Keys_Freelist {
   private:
     KeysList* freelist;
     KeysList* tail;
     //Mutex* latch;
   public:
-  
+
    Keys_Freelist() {
      freelist = (KeysList*)malloc(sizeof(KeysList)*KEYS_FREELIST_CNT );
      memset(freelist, 0x00, sizeof(KeysList)*KEYS_FREELIST_CNT );
@@ -70,7 +71,7 @@ class Keys_Freelist {
      ret->head = NULL;
      ret->tail = NULL;
   //pthread_mutex_unlock(&(latch->mutex_));
-     return ret;   
+     return ret;
    }
 
    void Put(KeysList* keys_list) {
@@ -90,9 +91,9 @@ class Lockrequest_Freelist {
     LockRequest* freelist;
     LockRequest* tail;
     //Mutex* latch;
-    
+
   public:
-  
+
    Lockrequest_Freelist() {
      freelist = (LockRequest*)malloc(sizeof(LockRequest)*LOCKREQUEST_FREELIST_CNT);
      memset(freelist, 0x00, sizeof(LockRequest)*LOCKREQUEST_FREELIST_CNT);
@@ -114,7 +115,7 @@ class Lockrequest_Freelist {
      ret->txn = NULL;
      ret->next_sub_txn = NULL;
   //pthread_mutex_unlock(&(latch->mutex_));
-     return ret;   
+     return ret;
    }
 
    void Put(LockRequest* lock_list) {
@@ -151,17 +152,17 @@ class HashEntry_Lm {
      this->key = key;
      this->value = value;
    }
- 
+
    uint64_t GetKey() {
      return key;
    }
- 
+
    uint32_t getValue() {
      return value;
    }
 };
 
- 
+
 class HashMap_Lm {
  private:
    HashEntry_Lm* table;
@@ -176,7 +177,7 @@ class HashMap_Lm {
      }
      size = 0;
    }
- 
+
    uint64_t Get(uint64_t key) {
      int hash = Hash(key) % HASH_MAP_LM_SIZE;
      while (table[hash].key != key) {
@@ -185,7 +186,7 @@ class HashMap_Lm {
 
      return table[hash].value;
    }
- 
+
    void Put(uint64_t key, uint32_t value) {
      int hash = Hash(key) % HASH_MAP_LM_SIZE;
      while (table[hash].key != MAX_UINT64) {
@@ -195,7 +196,7 @@ class HashMap_Lm {
      table[hash].value = value;
      size++;
    }
-   
+
    void Erase(uint64_t key) {
      int hash = Hash(key) % HASH_MAP_LM_SIZE;
      while (table[hash].key != key) {
@@ -205,7 +206,7 @@ class HashMap_Lm {
      table[hash].value = 0;
      size--;
    }
-   
+
    uint32_t Size() {
      return size;
    }
@@ -228,7 +229,7 @@ class HashMap_Lm {
        return false;
      }
    }
-   
+
    ~HashMap_Lm() {
      delete  table;
    }
@@ -245,11 +246,11 @@ class HashEntry_Waitforgraph {
      this->value = value;
      next = NULL;
    }
- 
+
    uint64_t GetKey() {
      return key;
    }
- 
+
    uint64_t getValue() {
      return value;
    }
@@ -259,12 +260,12 @@ class HashEntry_FreeList {
   private:
    HashEntry_Waitforgraph* freeList_;
    HashEntry_Waitforgraph* tail_;
-  
-  public: 
+
+  public:
    HashEntry_FreeList(uint64_t freeList_cnt) {
      char* data = (char*)malloc(freeList_cnt * sizeof(HashEntry_Waitforgraph));
      memset(data, 0x0, freeList_cnt * sizeof(HashEntry_Waitforgraph));
-     
+
      for(uint64_t i = 0; i < freeList_cnt; i++) {
        ((HashEntry_Waitforgraph*)(data + i * sizeof(HashEntry_Waitforgraph)))->next = (HashEntry_Waitforgraph*)(data + (i + 1) * sizeof(HashEntry_Waitforgraph));
      }
@@ -360,7 +361,7 @@ spin_unlock(&print_lock);
      }
      freeList_->PutHashEntry(rec);
    }
-}; 
+};
 
 
 class Deadlock_LockManager {
@@ -373,6 +374,45 @@ class Deadlock_LockManager {
   virtual void RemoveToWaitforgraph(uint32_t worker, uint64_t txn1) = 0;
 
   virtual void Setup(int worker_id) = 0;
+};
+
+class SetArray_txn {
+ private:
+   SubTxn** table;
+   int size;
+
+ public:
+   SetArray_txn() {
+     table = (SubTxn**)malloc(sizeof(SubTxn*) * SET_ARRAY_MAX_SIZE);
+     for (int i = 0; i < SET_ARRAY_MAX_SIZE; i++) {
+       table[i] = NULL;
+     }
+     size = 0;
+   }
+
+   SubTxn* Pop(void) {
+    return (size > 0) ? table[--size] : NULL;
+   }
+
+   void Add(SubTxn* subtxn) {
+    int i = 0;
+    for (; i < size && i < SET_ARRAY_MAX_SIZE; i++) {
+      if (table[i] == subtxn)
+        return;
+    }
+
+    if (size == SET_ARRAY_MAX_SIZE)
+      exit(1);
+
+    table[i] = subtxn;
+    size++;
+
+    return;
+   }
+
+   ~SetArray_txn() {
+     delete table;
+   }
 };
 
 
