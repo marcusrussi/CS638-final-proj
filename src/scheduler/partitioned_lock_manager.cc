@@ -102,7 +102,13 @@ void LockManager::Setup(PartitionedExecutor* scheduler) {
 }
 
 void LockManager::Lock(SubTxn* sub_txn) {
+  Lock(sub_txn, false, 0, 0);
+}
+
+void LockManager::Lock(SubTxn* sub_txn, bool optimize, int start_tableid, int start_key) {
   uint32_t not_acquired = 0;
+  bool acquire_locks = !optimize; // Whether or not we have already jumped ahead towards the first lock
+                             // we know to not have acquired.
   Txn* txn = sub_txn->txn;
   // Handle read/write lock requests.
 
@@ -110,6 +116,14 @@ void LockManager::Lock(SubTxn* sub_txn) {
     TableKey table_key = txn->GetReadWriteSet(i);
     uint64_t key = table_key.key;
     uint32_t table_id = table_key.table_id;
+
+    if (!acquire_locks && table_id == start_tableid && key == start_key) {
+      acquire_locks = true;
+      continue;
+    }
+
+    if (!acquire_locks)
+      continue;
 
     Traditional_Bucket* bucket =  lock_table_ + Hash(key) % table_buckets[table_id] + table_sum_buckets[table_id];
     pthread_mutex_lock(&(bucket->latch));
@@ -184,6 +198,14 @@ void LockManager::Lock(SubTxn* sub_txn) {
     TableKey table_key = txn->GetReadSet(i);
     uint64_t key = table_key.key;
     uint32_t table_id = table_key.table_id;
+
+    if (!acquire_locks && table_id == start_tableid && key == start_key) {
+      acquire_locks = true;
+      continue;
+    }
+
+    if (!acquire_locks)
+      continue;
 
     Traditional_Bucket* bucket =  lock_table_ + Hash(key) % table_buckets[table_id] + table_sum_buckets[table_id];
     pthread_mutex_lock(&(bucket->latch));
@@ -296,9 +318,9 @@ void LockManager::Release(SubTxn* sub_txn) {
     Release(txn->GetReadSet(i), txn);
   }
 
-  SubTxn* progressing_subtxn = NULL;
+  SetArray_Element progressing_subtxn = NULL;
   while ((progressing_subtxn = progressed_subtxns->Pop()) != NULL)
-    Lock(progressing_subtxn);
+    Lock(progressing_subtxn.subtxn, true, progressing_subtxn.start_table_id, progressing_subtxn.start_key);
 }
 
 
@@ -348,7 +370,7 @@ void LockManager::Release(const TableKey table_key, Txn* txn) {
 
       // If a write lock request follows, grant it.
       if (following_locks->mode == WRITE) {
-        progressed_subtxns->Add(following_locks->current_sub_txn);
+        progressed_subtxns->Add(following_locks->current_sub_txn, table_id, key);
         // if (txn_wait->DecreaseAndIfZero(following_locks->txn->GetTxnId()) == true) {
         //   if (following_locks->next_sub_txn == NULL) {
         //     bool not_full;
@@ -364,7 +386,7 @@ void LockManager::Release(const TableKey table_key, Txn* txn) {
 
       // If a sequence of read lock requests follows, grant all of them.
       for (; following_locks != NULL && following_locks->mode == READ; following_locks = following_locks->next) {
-        progressed_subtxns->Add(following_locks->current_sub_txn);
+        progressed_subtxns->Add(following_locks->current_sub_txn, table_id, key);
         // if (txn_wait->DecreaseAndIfZero(following_locks->txn->GetTxnId()) ) {
         //   if (following_locks->next_sub_txn == NULL) {
         //     bool not_full;
@@ -380,7 +402,7 @@ void LockManager::Release(const TableKey table_key, Txn* txn) {
     } else if (!write_requests_precede_target && target->mode == WRITE && following_locks->mode == READ) {  // (c)
       // If a sequence of read lock requests follows, grant all of them.
       for (; following_locks != NULL && following_locks->mode == READ; following_locks = following_locks->next) {
-        progressed_subtxns->Add(following_locks->current_sub_txn);
+        progressed_subtxns->Add(following_locks->current_sub_txn, table_id, key);
         // if (txn_wait->DecreaseAndIfZero(following_locks->txn->GetTxnId()) ) {
         //   if (following_locks->next_sub_txn == NULL) {
         //     bool not_full;

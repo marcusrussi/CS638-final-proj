@@ -376,14 +376,20 @@ class Deadlock_LockManager {
   virtual void Setup(int worker_id) = 0;
 };
 
+struct SetArray_Element {
+  SubTxn* subtxn;
+  uint32_t start_table_id;
+  uint64_t start_key;
+};
+
 class SetArray_txn {
  private:
-   SubTxn** table;
+   SetArray_Element* table;
    int size;
 
  public:
    SetArray_txn() {
-     table = (SubTxn**)malloc(sizeof(SubTxn*) * SET_ARRAY_MAX_SIZE);
+     table = (SetArray_Element*)malloc(sizeof(SetArray_Element) * SET_ARRAY_MAX_SIZE);
      for (int i = 0; i < SET_ARRAY_MAX_SIZE; i++) {
        table[i] = NULL;
      }
@@ -394,7 +400,7 @@ class SetArray_txn {
     return (size > 0) ? table[--size] : NULL;
    }
 
-   void Add(SubTxn* subtxn) {
+   void Add(SubTxn* subtxn, start_table_id_, start_key_) {
     int i = 0;
     for (; i < size && i < SET_ARRAY_MAX_SIZE; i++) {
       if (table[i] == subtxn)
@@ -404,7 +410,10 @@ class SetArray_txn {
     if (size == SET_ARRAY_MAX_SIZE)
       exit(1);
 
-    table[i] = subtxn;
+    table[i].subtxn = subtxn;
+    table[i].start_table_id = start_table_id_;
+    table[i].start_key = start_key_;
+
     size++;
 
     return;
