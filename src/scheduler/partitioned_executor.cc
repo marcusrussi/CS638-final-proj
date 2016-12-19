@@ -46,6 +46,16 @@ PartitionedExecutor::PartitionedExecutor (const Application* application) {
     next_cpu++;
   }
 
+  if (LM_THREADS_PER_PARTITION == 1) {
+    int j;
+    for (j = 0; j < LOCK_MANAGER_THREADS; ++j)
+    {
+      lock_manager_cpus[j] = j;
+    }
+    for (; j < WORKER_THREADS + LOCK_MANAGER_THREADS; ++j)
+      worker_cpus[j - LOCK_MANAGER_THREADS] = j;
+  }
+
   // for (int i = 0; i < LOCK_MANAGER_THREADS; i++) {
   //   printf("lock_manager %d: cpu %d\n", i, lock_manager_cpus[i]);
   // }
