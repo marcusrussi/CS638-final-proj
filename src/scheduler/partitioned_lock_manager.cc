@@ -105,7 +105,7 @@ void LockManager::Lock(SubTxn* sub_txn) {
   Lock(sub_txn, false, 0, 0);
 }
 
-void LockManager::Lock(SubTxn* sub_txn, bool optimize, int start_tableid, int start_key) {
+void LockManager::Lock(SubTxn* sub_txn, bool optimize, uint32_t start_tableid, uint64_t start_key) {
   uint32_t not_acquired = 0;
   bool acquire_locks = !optimize; // Whether or not we have already jumped ahead towards the first lock
                              // we know to not have acquired.
@@ -318,9 +318,9 @@ void LockManager::Release(SubTxn* sub_txn) {
     Release(txn->GetReadSet(i), txn);
   }
 
-  SetArray_Element progressing_subtxn = NULL;
+  SetArray_Element *progressing_subtxn = NULL;
   while ((progressing_subtxn = progressed_subtxns->Pop()) != NULL)
-    Lock(progressing_subtxn.subtxn, true, progressing_subtxn.start_table_id, progressing_subtxn.start_key);
+    Lock(progressing_subtxn->subtxn, true, progressing_subtxn->start_table_id, progressing_subtxn->start_key);
 }
 
 

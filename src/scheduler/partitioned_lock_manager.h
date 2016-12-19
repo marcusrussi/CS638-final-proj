@@ -16,6 +16,7 @@ class LockManager {
   LockManager(int lm_id, uint32_t table_num);
   virtual ~LockManager() {}
   virtual void Lock(SubTxn* sub_txn);
+  virtual void Lock(SubTxn* sub_txn, bool optimize, uint32_t start_tableid, uint64_t start_key);
   virtual void Release(SubTxn* sub_txn);
   virtual void Release(const TableKey table_key, Txn* txn);
   void Setup(PartitionedExecutor* scheduler);

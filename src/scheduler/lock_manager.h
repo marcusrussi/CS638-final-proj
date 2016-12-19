@@ -391,19 +391,21 @@ class SetArray_txn {
    SetArray_txn() {
      table = (SetArray_Element*)malloc(sizeof(SetArray_Element) * SET_ARRAY_MAX_SIZE);
      for (int i = 0; i < SET_ARRAY_MAX_SIZE; i++) {
-       table[i] = NULL;
+       table[i].subtxn = NULL;
+       table[i].start_table_id = 0;
+       table[i].start_key = 0;
      }
      size = 0;
    }
 
-   SubTxn* Pop(void) {
-    return (size > 0) ? table[--size] : NULL;
+   SetArray_Element* Pop(void) {
+    return (size > 0) ? &table[--size] : NULL;
    }
 
-   void Add(SubTxn* subtxn, start_table_id_, start_key_) {
+   void Add(SubTxn* subtxn, uint32_t start_table_id_, uint64_t start_key_) {
     int i = 0;
     for (; i < size && i < SET_ARRAY_MAX_SIZE; i++) {
-      if (table[i] == subtxn)
+      if (table[i].subtxn == subtxn)
         return;
     }
 
